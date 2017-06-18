@@ -159,7 +159,7 @@ void createAndroid(Farm &farm, int &nextSerialNumber) {
 }
 
 // Returns index of the given field name. If it doesn't exist, returns -1
-int fieldExists(string name, Farm &farm) {
+int getFieldNameIndex(string name, Farm &farm) {
   int index = -1;
   for (int i = 0; i < farm.fields.size(); i++) {
     if (farm.fields[i].name == name) index = i;
@@ -172,7 +172,7 @@ void createField(Farm &farm) {
   string name;
   cout << "Enter field name: ";
   getline(cin, name);
-  if (fieldExists(name, farm) == -1) {
+  if (getFieldNameIndex(name, farm) == -1) {
     // The given name is not repeated, create the field...
     Field field;
     field.name = name;
@@ -204,23 +204,18 @@ void collectFarm(Farm &farm) {
 // asks for products data in the farm's fields, then collects them
 void startWorkingDay(Farm &farm) {
   bool correctName = false;
-  string name;
+  string name = "q";
   do {
     if (farm.fields.size() > 0) {
-      // The farm contains fields that can be worked
-      // Ask for field name
-      cout << "Enter field name: ";
-      getline(cin, name);
+      // The farm contains fields that can be collected
+      do {
+        cout << "Enter field name: ";
+        getline(cin, name);
 
-      // Check if a field with that name exists
-      int index = fieldExists(name, farm);
-      if (index != -1 && name != "q")
-        correctName = true;
+        int index = getFieldNameIndex(name, farm);
+        if (index != -1) correctName = true;
+      } while (name == "q" || correctName);
     }
-    else {
-      error(ERR_NO_FIELDS);
-    }
-  } while (!correctName);
 }
 
 void menu() {
