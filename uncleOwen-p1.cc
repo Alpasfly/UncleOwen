@@ -240,7 +240,8 @@ void distributeAndroids(Farm &farm) {
       }
     }
 
-    // Move fastest android to next field
+    // Put fastest android to work on determined field
+    farm.fields[nfi].androids[fai].status = ST_WORKING;
     farm.fields[nfi].androids.push_back(farm.androids[fai]);
     farm.androids.erase(farm.androids.begin() + fai);
   }
