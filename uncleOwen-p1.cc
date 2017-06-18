@@ -185,36 +185,145 @@ void createField(Farm &farm) {
   }
 }
 
+int nextField(Farm &farm) {
+  int nfi;                // Next Field Index
+  int m        = INT_MAX; // Min ammouont of andorids in fields
+  int maxProds = 0;       // Max ammount of products in fields
+  vector<Field> fields;
+
+  // Find lowest ammount of androids in a field
+  for (int i = 0; i < farm.fields.size(); i++) {
+    if (m > farm.fields[i].androids.size())
+      m = farm.fields[i].androids.size();
+  }
+
+  // Push all the less populated fields to a vector
+  for (int i = 0; i < farm.fields.size(); i++) {
+    if (farm.fields[i].androids.size() == m) fields.push_back(farm.fields[i]);
+  }
+
+  // Find highest ammount of products amongst the minimally populated fields
+  for (int i = 0; i < fields.size(); i++) {
+    if (maxProds < fields[i].products)
+      maxProds = fields[i].products;
+  }
+
+  // Find the next field index
+  for (int i = 0; i < farm.fields.size(); i++) {
+    if (farm.fields[i].androids.size() == m && farm.fields[i].products == maxProds)
+      nfi = i;
+  }
+
+  return nfi;
+}
 
 // distributes the farm's androids among its fields
 void distributeAndroids(Farm &farm) {
+  bool distributable = false; // Are there any fields to distribute androids in
+  int nfi;                    // Next Field Index
+  int fai;                    // Fastest Android Index
+  int maxSpeed = 0;           // Max speed in farm's androids
 
+  cout << HEADER2 << endl;
+  // Check if there are fields to collect
+  for (int i = 0; i < farm.fields.size(); i++) {
+    if (farm.fields[i].products > 0) distributable = true;
+  }
+
+  while (distributable) {
+    nfi = nextField(farm);
+    // Find fastest android in farm
+    for (int i = 0; i < farm.androids.size(); i++) {
+      if (farm.androids[i].status == ST_IDLE && farm.androids[i].speed > maxSpeed) {
+        maxSpeed = farm.androids[i].speed;
+        fai = i;
+      }
+    }
+
+    // Move fastest android to next field
+    farm.fields[nfi].androids.push_back(farm.androids[fai]);
+    farm.androids.erase(farm.androids.begin() + fai);
+  }
 }
 
 // simulates the collection of products in a field by its androids
 void collectField(Field &field) {
+  int workingHours = 5; // This might change in the future
+  int totalProducts = 0;
+  // Calculate the ammount of collected products by multiplying
+  // each android's speed (in products/hour) by the ammount of working hours
+  for (int i = 0; i < field.androids.size(); i++) {
+    totalProducts += field.androids[i].speed * workingHours;
+  }
 
+  // Subtract the total collectable products from the field's products
+  field.products -= totalProducts;
+  if (field.products < 0) field.products = 0;
+
+  // Finish working session by setting all androids to idle status...
+  for (int i = 0; i < field.androids.size(); i++) {
+    field.androids[i].status = ST_IDLE;
+  }
+}
+
+// Move androids from field to farm
+void returnAndroids(Field field, Farm farm) {
+  for (int i = 0; i < field.androids.size(); i++) {
+    farm.androids.push_back(field.androids[i]);
+    field.androids.erase(field.androids.begin() + i);
+  }
 }
 
 // collects the products in the farm's fields
 void collectFarm(Farm &farm) {
+  cout << HEADER1 << endl;
+  printFarm(farm);
+  distributeAndroids(farm);
+  // Collect every field in the farm
+  for (int i = 0; i < farm.fields.size(); i++) {
+    collectField(farm.fields[i]);
+    // Return androids from fields to farm
+    returnAndroids(farm.fields[i], farm);
+  }
 
+  cout << HEADER3 << endl;
+  printFarm(farm);
 }
 
 // asks for products data in the farm's fields, then collects them
 void startWorkingDay(Farm &farm) {
   bool correctName = false;
+  int products = 0;
   string name = "q";
-  do {
     if (farm.fields.size() > 0) {
       // The farm contains fields that can be collected
       do {
+        // Ask for field name
         cout << "Enter field name: ";
         getline(cin, name);
 
+        // If the field exists or the user entered a "q", ask for products
         int index = getFieldNameIndex(name, farm);
-        if (index != -1) correctName = true;
+        if (index != -1 || name == "q") {
+          cout << "Products: ";
+          cin >> products;
+
+          cin.clear();
+          cin.ignore(INT_MAX, '\n');
+          
+          if (products > 0) {
+            farm.fields[index].products += products;
+          }
+          else {
+            error(ERR_WRONG_PRODUCTS);
+            correctName = false;
+          }
+        }
+        else
+          error(ERR_WRONG_FIELD);
       } while (name == "q" || correctName);
+      
+      collectFarm(farm);
     }
 }
 
