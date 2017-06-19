@@ -90,7 +90,12 @@ const string HEADER3="---- end ----";
 
  // prints android info
 void printAndroid(const Android &android) {
-
+  cout << "[" 
+       << android.model 
+       <<  "sn=" << android.serialNumber
+       <<  " s=" << android.speed
+       << " st=" << android.status
+       << "]"    << endl;
 }
 
 // prints field info
