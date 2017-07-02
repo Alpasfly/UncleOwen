@@ -55,7 +55,7 @@ typedef struct {
    string model;
    int speed;
    int serialNumber;
-   int hoursWorked;
+   double hoursWorked;
    Status status;
 } Android;
 
@@ -136,7 +136,7 @@ const string HOUR="Hour: ";
 const string SEPARATOR="===============================================";
 
 
-const int MAXNAME=10;
+const int MAXNAME = 10;
 
 // Binary file data structures
 typedef struct {
@@ -144,7 +144,7 @@ typedef struct {
    int speed;
    int serialNumber;
    Status status;
-   int hoursWorked;
+   double hoursWorked;
 } AndroidBin;
 
 typedef struct {
@@ -611,10 +611,17 @@ int nextField(Farm &farm) {
   unsigned int m = INT_MAX; // Min ammouont of andorids in fields
   int maxProds   = 0;       // Max ammount of products in fields
   vector<Field> fields;
+  // Ammount of products that can be collected by a field's androids in an hour
+  int collectPotential = 0; 
 
   // Find lowest ammount of androids in a field
   for (unsigned int i = 0; i < farm.fields.size(); i++) {
-    if (m > farm.fields[i].androids.size())
+    // Calculate the amount of products that can be collected in the next hour
+    // By the androids already working in the selected field
+    for (unsigned int j = 0; j < farm.fields[i].androids.size(); j++) {
+      collectPotential += farm.fields[i].androids[j].speed;
+    }
+    if (m > farm.fields[i].androids.size() && collectPotential < farm.fields[i].products)
       m = farm.fields[i].androids.size();
   }
 
@@ -642,7 +649,7 @@ int nextField(Farm &farm) {
 void distributeAndroids(Farm &farm) {
   bool distributable = false; // Are there any fields to distribute androids in
   int nfi;                    // Next Field Index
-  int fai;                    // Fastest Android Index
+  int nai;                    // Mext Android Index
   int maxSpeed = 0;           // Max speed in farm's androids
 
   cout << HEADER2 << endl;
@@ -653,25 +660,35 @@ void distributeAndroids(Farm &farm) {
 
   while (distributable) {
     nfi = nextField(farm);
-    // Find fastest android in farm
+    // Find android whose speed can divide the number of remaining products in field
     for (unsigned int i = 0; i < farm.androids.size(); i++) {
-      if (farm.androids[i].status == ST_IDLE && farm.androids[i].speed > maxSpeed) {
-        maxSpeed = farm.androids[i].speed;
-        fai = i;
+      for (unsigned int j = 0; j < farm.fields.size(); j++) {
+        if ((farm.fields[j].products % farm.androids[i].speed) == 0) {
+          maxSpeed = farm.androids[i].speed;
+          nai = i;
+        }
+        // If there isn't any, find fastest android in farm
+        else if (farm.androids[i].status == ST_IDLE && farm.androids[i].speed > maxSpeed) {
+          maxSpeed = farm.androids[i].speed;
+          nai = i;
+        }
       }
     }
 
-    // Put fastest android to work on determined field
-    farm.fields[nfi].androids[fai].status = ST_WORKING;
-    farm.fields[nfi].androids.push_back(farm.androids[fai]);
-    farm.androids.erase(farm.androids.begin() + fai);
+    // Put next android to work on determined field
+    farm.fields[nfi].androids[nai].status = ST_WORKING;
+    farm.fields[nfi].androids.push_back(farm.androids[nai]);
+    farm.androids.erase(farm.androids.begin() + nai);
   }
 }
 
+// TODO: return androids
 // Simulates the collection of products in a field by its androids
-void collectField(Field &field) {
+vector<Android> collectField(Field &field) {
+  vector<Android> androids;
   int workingHours = 5; // This might change in the future
   int totalProducts = 0;
+
   // Calculate the ammount of collected products by multiplying
   // each android's speed (in products/hour) by the ammount of working hours
   for (unsigned int i = 0; i < field.androids.size(); i++) {
@@ -682,10 +699,13 @@ void collectField(Field &field) {
   field.products -= totalProducts;
   if (field.products < 0) field.products = 0;
 
-  // Finish working session by setting all androids to idle status...
+  // Finish working session by setting all androids to idle status
+  // preparing them to be returned to the farm
   for (unsigned int i = 0; i < field.androids.size(); i++) {
     field.androids[i].status = ST_IDLE;
+    androids.push_back(field.androids[i]);
   }
+  return androids;
 }
 
 // Move androids from field to farm
@@ -696,68 +716,66 @@ void returnAndroids(Field field, Farm farm) {
   }
 }
 
+// Applies maintenance process to Androids
+void maintain(vector<Android> &androids) {
+  for (int i = 0; i < androids.size(); i++) {
+    if (androids.at(i).status == ST_MAINTENANCE1) {
+      androids.at(i).status = ST_IDLE;
+      androids.at(i).hoursWorked = 0;
+    } else if (androids.at(i).status == ST_MAINTENANCE0)
+      androids.at(i).status = ST_MAINTENANCE1;
+  }
+}
+
 // Collects the products in the farm's fields
 void collectFarm(Farm &farm, int &hour) {
+  vector<Android> returnedAndroids;
   cout << SEPARATOR << endl;
   cout << HOUR << hour << endl;
-
   cout << HEADER1 << endl;
   printFarm(farm);
+
   distributeAndroids(farm);
+  cout << HEADER2 << endl;
+  printFarm(farm);
+
   // Collect every field in the farm
   for (unsigned int i = 0; i < farm.fields.size(); i++) {
-    collectField(farm.fields[i]);
-    // Return androids from fields to farm
-    returnAndroids(farm.fields[i], farm);
+    returnedAndroids = collectField(farm.fields[i]);
+    // Return every collected field's androids to the farm
+    for (unsigned int j = 0; j < returnedAndroids.size(); j++) {
+      farm.androids.push_back(returnedAndroids[j]);
+    }
+  }
+
+  // Delete returned androids vector
+  for (unsigned int i = 0; i < returnedAndroids.size(); i++) {
+    returnedAndroids.erase(returnedAndroids.begin() + i);
+  }
+
+  hour++;
+  // Maintain androids if journal hours were exceeded
+  if (hour >= WORKHOURS) {
+    maintain(farm.androids);
+    hour = 1;
   }
 
   cout << HEADER3 << endl;
   printFarm(farm);
 }
 
-// TODO: refactor this to startworkinghour
 // Ask for products data in the farm's fields, then collect them
-void startWorkingDay(Farm &farm) {
-  bool correctName = false;
-  int products = 0;
-  string name = "q";
-    if (farm.fields.size() > 0) {
-      // The farm contains fields that can be collected
-      do {
-        // Ask for field name
-        cout << "Enter field name: ";
-        getline(cin, name);
-
-        // If the field exists or the user entered a "q", ask for products
-        int index = getFieldNameIndex(name, farm);
-        if (index != -1 || name == "q") {
-          cout << "Products: ";
-          cin >> products;
-
-          cin.clear();
-          cin.ignore(INT_MAX, '\n');
-          
-          if (products > 0) {
-            farm.fields[index].products += products;
-          }
-          else {
-            error(ERR_WRONG_PRODUCTS);
-            correctName = false;
-          }
-        }
-        else
-          error(ERR_WRONG_FIELD);
-      } while (name == "q" || correctName);
-      
-      //collectFarm(farm, hour);
-    }
-}
-
-// Ask for products data in the farm's fields, then collect them
-void startWorkingHour(Farm &f,int &hour) {
+void startWorkingHour(Farm &f, int &hour) {
   string data;
   if (f.fields.size() <= 0)
     error(ERR_NO_FIELDS);
+  
+  cout << "Products: ";
+  cin.ignore();
+  getline(cin, data);
+
+  processProducts(data, f);
+  collectFarm(f, hour);
 }
 
 void menu(int hour) {
