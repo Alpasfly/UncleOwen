@@ -3,6 +3,7 @@
 #include <climits>
 #include <vector>
 #include <string>
+#include <cstring>
 #include <fstream>
 
 using namespace std;
@@ -194,6 +195,7 @@ bool writeFarmData(const Farm &farm,int nextSerialNumber,int hour) {
   file.open(fileName.c_str(), ios::out | ios::binary);
   if (file.is_open()) {
     correct = true;
+    // TODO: this seems not to build with the autocorrector script
     // Copy a fixed ammount of characters from one string to another
     strncpy(fab.name, farm.name.c_str(), MAXNAME);
 
@@ -365,7 +367,7 @@ bool importAndroids(Farm &farm,int &nextSerialNumber, string path) {
 
 // Process the string with field and product data
 void processProducts(string data, Farm &farm) {
-  unsigned int i;
+  int i;
   string name;
   string s_products;
   int productsIndex;
