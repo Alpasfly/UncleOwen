@@ -197,7 +197,6 @@ bool writeFarmData(const Farm &farm,int nextSerialNumber,int hour) {
   file.open(fileName.c_str(), ios::out | ios::binary);
   if (file.is_open()) {
     correct = true;
-    // TODO: this seems not to build with the autocorrector script
     // Copy a fixed ammount of characters from one string to another
     strncpy(fab.name, farm.name.c_str(), MAXNAME);
 
@@ -276,7 +275,6 @@ bool readFarmData(Farm &farm, int &nextSerialNumber,int &hour) {
   file.open(fileName.c_str(), ios::in | ios::binary);
   if (file.is_open()) {
     correct = true;
-    // TODO: figure out what this does before it breaks something
     clearFarm(farm);
     file.read((char *) &fab, sizeof(fab));
 
