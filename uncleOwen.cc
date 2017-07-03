@@ -1,7 +1,7 @@
 #include <iostream>
 #include <climits>
 #include <vector>
-#include <string>
+#include <cstring>
 #include <fstream>
 #include <cstdlib>
 
@@ -466,6 +466,7 @@ bool importProducts(Farm &farm, string path) {
 // Returns wether the introduced execution arguments were correct
 // and modifies the application's behaviour in consequence
 bool processArguments(int argc, char *argv[], Farm &farm, int &nextSerialNumber) {
+
   string pfn = ""; // Products file name
   string afn = ""; // Androids file name
   bool right = false;
