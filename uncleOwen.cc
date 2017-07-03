@@ -225,9 +225,9 @@ bool writeFarmData(const Farm &farm,int nextSerialNumber,int hour) {
 
 
         ab.serialNumber = farm.fields.at(i).androids.at(j).serialNumber;
-        ab.status = farm.fields.at(i).androids.at(j).status;
-        ab.speed = farm.fields.at(i).androids.at(j).speed;
-        ab.hoursWorked = farm.fields.at(i).androids.at(j).hoursWorked;
+        ab.status       = farm.fields.at(i).androids.at(j).status;
+        ab.speed        = farm.fields.at(i).androids.at(j).speed;
+        ab.hoursWorked  = farm.fields.at(i).androids.at(j).hoursWorked;
         ab.model[MAXNAME - 1] = '\0';
 
         // Write data to file
@@ -243,6 +243,20 @@ bool writeFarmData(const Farm &farm,int nextSerialNumber,int hour) {
   return correct;
 }
 
+void clearFarm(Farm &farm) {
+  // Delete androids vector from farm
+  for (int i = 0; i < farm.androids.size(); i++) {
+    farm.androids.erase(farm.androids.begin() + i);
+  }
+  for (int i = 0; i < farm.fields.size(); i++) {
+    // Delete androids vectors from each field
+    for (int j = 0; j < farm.fields.at(i).androids.size(); j++) {
+      farm.fields.at(i).androids.erase(farm.fields.at(i).androids.begin() + j);
+    }
+    // Delete fields vector from farm
+    farm.fields.erase(farm.fields.begin() + i);
+  }
+}
 
 // Ask for file name, open said file and read farm data
 // Return wether the file was correctly opened
@@ -263,7 +277,7 @@ bool readFarmData(Farm &farm, int &nextSerialNumber,int &hour) {
   if (file.is_open()) {
     correct = true;
     // TODO: figure out what this does before it breaks something
-    //clearFarm(farm);
+    clearFarm(farm);
     file.read((char *) &fab, sizeof(fab));
 
     farm.name = fab.name;
@@ -273,8 +287,8 @@ bool readFarmData(Farm &farm, int &nextSerialNumber,int &hour) {
     // Add all data for field
     for (int i = 0; i < fab.numFields; i++) {
       file.read((char *) &fib, sizeof(fib));
-      field.name = fib.name;
-      field.products = fib.products;
+      field.name      = fib.name;
+      field.products  = fib.products;
       field.hoursLeft = fib.hoursLeft;
 
       field.androids.clear();
@@ -597,6 +611,7 @@ void createField(Farm &farm) {
     Field field;
     field.name = name;
     field.products = 0;
+    field.hoursLeft = DAILY_WORKING_HOURS;
     // ...and add it to the farm
     farm.fields.push_back(field);
   }
@@ -682,7 +697,6 @@ void distributeAndroids(Farm &farm) {
   }
 }
 
-// TODO: return androids
 // Simulates the collection of products in a field by its androids
 vector<Android> collectField(Field &field) {
   vector<Android> androids;
@@ -755,7 +769,7 @@ void collectFarm(Farm &farm, int &hour) {
 
   hour++;
   // Maintain androids if journal hours were exceeded
-  if (hour >= WORKHOURS) {
+  if (hour >= DAILY_WORKING_HOURS) {
     maintain(farm.androids);
     hour = 1;
   }
